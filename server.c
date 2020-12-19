@@ -230,28 +230,8 @@ int main()
 
     while (1)
     {
+        //todo replace code w/ ASYNC version
         printf("\n~~~~~~~~~Waiting to accept a new conn~~~~~~~~\n\n\n");
-        int accepted_socket;
-
-        check(accepted_socket = accept(server_file_d, (struct sockaddr *)&incoming_addr, &addrlen), "Failed to accept connection");
-
-        char from[INET6_ADDRSTRLEN] = {0};
-
-        inet_ntop(incoming_addr.ss_family, get_in_addr((struct sockaddr *)&incoming_addr), from, sizeof(from));
-
-        pthread_t thread;
-
-        int *p_accepted_socket = malloc(sizeof(int));
-
-        *p_accepted_socket = accepted_socket;
-
-        thread_args *args = malloc(sizeof(thread_args)); // we want to malloc because we want whatever is in the main thread to point to a "NEW" memory location so that we don't have a data race
-        memset(args, '\0', sizeof(&args));
-
-        args->socket = p_accepted_socket;
-        args->host_name = strdup(from); //clone
-
-        pthread_create(&thread, NULL, &handle_conn_wrapper, args); // don't want any special attributes(detachable threads, etc), we just want default
     }
     close(server_file_d);
     return 0;
