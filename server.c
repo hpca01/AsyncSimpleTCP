@@ -227,6 +227,8 @@ int main()
 
     check(bind(server_file_d, res->ai_addr, res->ai_addrlen), "Failed to bind socket to address/port");
 
+    setnonblocking(server_file_d); //set listening socket to nonblocking
+
     //Now listen to the bound port
     check(listen(server_file_d, BACKLOG), "Failed to listen");
     //listen doesn't mean accept
@@ -264,8 +266,30 @@ int main()
             if (events[n].data.fd == server_file_d)
             {
                 //if any events are ready to talk, then check if they're the server_file_d
-                accepted = accept(server_file_d, get_in_addr((struct sockaddr *)&incoming_addr), addrlen);
-                check(accepted, "Failed to accept connection");
+                for (;;)
+                {
+                    accepted = accept(server_file_d, get_in_addr((struct sockaddr *)&incoming_addr), addrlen);
+                    // if -1 we done processing everything
+
+                    if ((accepted == -1) && (errno == EAGAIN || errno == EWOULDBLOCK))
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        printf("accepted connection on %d", accepted);
+                        setnonblocking(accepted);
+                        ev.data.fd = accepted;
+                        ev.events = EPOLLIN;
+
+                        check(epoll_ctl(epollfd, EPOLL_CTL_ADD, accepted, &ev), "COULD NOT ADD TO EPOLL"); // look into alternate closing?
+                    }
+                }
+            }
+            else
+            {
+                //this means it's a client socket ready to communicate;
+                int sock = events[n].data.fd;
             }
         }
     }
@@ -380,4 +404,15 @@ void write_file(FileOut *out, int accepted_socket)
     fwrite(out->buffer, sizeof(unsigned char), out->fp.st_size, sockfd); //should check to see if all of the content is written, there is no guarantee that fwrite will write ALL of the data out.
     fflush(sockfd);
     fclose(sockfd);
+}
+
+void setnonblocking(int fd)
+{
+    // get flags for current fd
+    int flags = fcntl(fd, F_GETFL);
+    check(flags, "Error getting flags for current fd");
+
+    //set flag to non-blocking by |=
+    int result = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    check(result, "Error setting the flag to non-blocking");
 }

@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/epoll.h>
+#include <fcntl.h>
 
 #define PORT_NUM 8080
 #define BUFF_SIZE 20000
@@ -62,3 +63,4 @@ int read_file(Route *route, FileOut *out);
 void write_file(FileOut *out, int sockfd);
 char *parse_file_type(char *input);
 void free_fout(FileOut *out);
+void setnonblocking(int fd);
