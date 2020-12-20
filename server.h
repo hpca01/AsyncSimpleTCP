@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <sys/epoll.h>
 
 #define PORT_NUM 8080
 #define BUFF_SIZE 20000
