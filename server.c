@@ -268,7 +268,7 @@ int main()
                 //if any events are ready to talk, then check if they're the server_file_d
                 for (;;)
                 {
-                    accepted = accept(server_file_d, get_in_addr((struct sockaddr *)&incoming_addr), addrlen);
+                    accepted = accept(server_file_d, get_in_addr((struct sockaddr *)&incoming_addr), &addrlen);
                     // if -1 we done processing everything
 
                     if ((accepted == -1) && (errno == EAGAIN || errno == EWOULDBLOCK))
@@ -277,7 +277,7 @@ int main()
                     }
                     else
                     {
-                        printf("accepted connection on %d", accepted);
+                        printf("accepted connection on %d \n", accepted);
                         setnonblocking(accepted);
                         ev.data.fd = accepted;
                         ev.events = EPOLLIN;
@@ -290,6 +290,11 @@ int main()
             {
                 //this means it's a client socket ready to communicate;
                 int sock = events[n].data.fd;
+                FILE *fd = fdopen(sock, "r+");
+                fprintf(fd, "hey there stranger"); //todo inject hand conn function in here.
+                fflush(fd);
+                fclose(fd);
+                close(sock);
             }
         }
     }
