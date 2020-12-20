@@ -184,7 +184,12 @@ int main()
 
     struct addrinfo hints, *res;
     struct sockaddr_storage incoming_addr; // this is to make it ipv4 or ipv6 agnostic
-    int server_file_d;
+    int server_file_d, accepted;
+    ///instantiate epoll instance
+    struct epoll_event ev, events[BACKLOG];
+    int epollfd, ndfs;
+    epollfd = epoll_create1(0); // TODO: close
+    check(epollfd, "Could not create epoll file descriptor");
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET; //only ipv4
@@ -226,32 +231,43 @@ int main()
     check(listen(server_file_d, BACKLOG), "Failed to listen");
     //listen doesn't mean accept
 
+    ev.events = EPOLLIN;
+    ev.data.fd = server_file_d;
+
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, server_file_d, &ev) == -1)
+    {
+        perror("Error with epoll CTL call on server_file_d");
+        close(server_file_d);
+        free(res);
+        exit(EXIT_FAILURE);
+        //exit everything
+    }
+
     socklen_t addrlen = sizeof(incoming_addr);
 
     while (1)
     {
+        //todo replace code w/ ASYNC version
         printf("\n~~~~~~~~~Waiting to accept a new conn~~~~~~~~\n\n\n");
-        int accepted_socket;
 
-        check(accepted_socket = accept(server_file_d, (struct sockaddr *)&incoming_addr, &addrlen), "Failed to accept connection");
+        ndfs = epoll_wait(epollfd, events, BACKLOG, -1);
+        if (ndfs == -1)
+        {
+            perror("Epoll wait error");
+            free(res);
+            close(server_file_d);
+            exit(EXIT_FAILURE);
+        }
 
-        char from[INET6_ADDRSTRLEN] = {0};
-
-        inet_ntop(incoming_addr.ss_family, get_in_addr((struct sockaddr *)&incoming_addr), from, sizeof(from));
-
-        pthread_t thread;
-
-        int *p_accepted_socket = malloc(sizeof(int));
-
-        *p_accepted_socket = accepted_socket;
-
-        thread_args *args = malloc(sizeof(thread_args)); // we want to malloc because we want whatever is in the main thread to point to a "NEW" memory location so that we don't have a data race
-        memset(args, '\0', sizeof(&args));
-
-        args->socket = p_accepted_socket;
-        args->host_name = strdup(from); //clone
-
-        pthread_create(&thread, NULL, &handle_conn_wrapper, args); // don't want any special attributes(detachable threads, etc), we just want default
+        for (int n = 0; n < ndfs; ++n)
+        {
+            if (events[n].data.fd == server_file_d)
+            {
+                //if any events are ready to talk, then check if they're the server_file_d
+                accepted = accept(server_file_d, get_in_addr((struct sockaddr *)&incoming_addr), addrlen);
+                check(accepted, "Failed to accept connection");
+            }
+        }
     }
     close(server_file_d);
     return 0;
