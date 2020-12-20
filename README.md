@@ -35,7 +35,6 @@ To-Do:
 - [x] Write client
 - [x] Parse Headers
 - [x] Assemble return with correct HTTP code.
-- [x] Add multi-threading, currently using multi-processing.
-- [x] Turn it into a multi-threaded file-server! -- Only works w/ jpeg, jpg, html, pdf files for now...
+- [ ] Change main loop to be async using EPOLL.
 - [ ] Write out client to do a load test
 - [ ] Valgrind Test on server after client is written
