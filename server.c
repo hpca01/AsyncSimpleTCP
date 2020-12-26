@@ -252,7 +252,7 @@ int main()
         //todo replace code w/ ASYNC version
         printf("\n~~~~~~~~~Waiting to accept a new conn~~~~~~~~\n\n\n");
 
-        ndfs = epoll_wait(epollfd, events, BACKLOG, -1);
+        ndfs = epoll_wait(epollfd, events, BACKLOG, -1); // checks to see if any FD are ready to talk
         if (ndfs == -1)
         {
             perror("Epoll wait error");
@@ -261,23 +261,23 @@ int main()
             exit(EXIT_FAILURE);
         }
 
-        for (int n = 0; n < ndfs; ++n)
+        for (int n = 0; n < ndfs; ++n) // iterate over the ones that are ready to talk, at this point you don't know if it is inbound or outbound
         {
-            if (events[n].data.fd == server_file_d)
+            if (events[n].data.fd == server_file_d) //if the fd is the listening socket, then it is inbound
             {
                 //if any events are ready to talk, then check if they're the server_file_d
                 for (;;)
                 {
                     accepted = accept(server_file_d, get_in_addr((struct sockaddr *)&incoming_addr), &addrlen);
-                    // if -1 we done processing everything
+                    // if -1, and the errno var is set, we are done processing everything
 
                     if ((accepted == -1) && (errno == EAGAIN || errno == EWOULDBLOCK))
                     {
                         break;
                     }
                     else
-                    {
-                        printf("accepted connection on %d \n", accepted);
+                    { //otherwise accept the connection, set it to non-blocking(default is blocking) then set the fd and events to check for in the ev struct(resusing it over and over again), then add it into the epollfd via the ctl call.
+                        printf("Accepted connection on %d \n", accepted);
                         setnonblocking(accepted);
                         ev.data.fd = accepted;
                         ev.events = EPOLLIN;
@@ -288,8 +288,21 @@ int main()
             }
             else
             {
-                //this means it's a client socket ready to communicate;
+                //check to see what client wants.
+
+                //this means it's a client socket ready to communicate
                 int sock = events[n].data.fd;
+
+                char buffer[BUFF_SIZE];
+
+                memset(&buffer, '\0', BUFF_SIZE * sizeof(char));
+
+                check(read(sock, &buffer, sizeof(buffer)), "Recv call done with -1");
+
+                printf("%s\n", buffer);
+
+                memset(&buffer, '\0', BUFF_SIZE * sizeof(char));
+
                 FILE *fd = fdopen(sock, "r+");
                 fprintf(fd, "hey there stranger"); //todo inject hand conn function in here.
                 fflush(fd);
