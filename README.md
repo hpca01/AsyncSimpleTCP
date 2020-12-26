@@ -22,7 +22,6 @@ After which you can create a seperate terminal and invoke the client:
 ./client
 
 ```
-The output is a static HTML page w/ client's request included.
 
 When you're done and want to clean up the artifacts:
 ```
@@ -35,6 +34,6 @@ To-Do:
 - [x] Write client
 - [x] Parse Headers
 - [x] Assemble return with correct HTTP code.
-- [ ] Change main loop to be async using EPOLL.
-- [ ] Write out client to do a load test
+- [x] Change main loop to be async using EPOLL.
+- [ ] Write out client to do a load test.
 - [ ] Valgrind Test on server after client is written
